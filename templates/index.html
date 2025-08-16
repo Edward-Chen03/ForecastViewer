@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Weather App{% endblock %}
+
+{% block content %}
+<div class="container">
+   
+    <div class="nyc-weather-dashboard">
+        <div class="dashboard-header">
+            <h2 id="dashboardTitle">Weather Dashboard</h2>
+            <div class="dashboard-controls">
+                <div class="location-selector" id="locationSelector" style="display: none;">
+                    <select id="locationSelect" class="location-select">
+                        <option value="nyc">New York City</option>
+                    </select>
+                </div>
+                <button id="refreshWeatherBtn" class="btn btn-secondary">Refresh</button>
+            </div>
+        </div>
+        
+        <div id="currentWeatherCard" class="current-weather-card">
+            <div class="loading">Initializing...</div>
+        </div>
+
+        <div id="forecastGrid" class="forecast-grid">
+            <div class="loading">Checking login status...</div>
+        </div>
+    </div>
+
+    <div id="guestContent" class="guest-content">
+        <div class="info-section">
+            <h2>Get Started</h2>
+            <p>Login with your email/username to get weather for your current location and save favorite locations.</p>
+            <button id="getStartedBtn" class="btn btn-primary">Get Started</button>
+        </div>
+    </div>
+
+    <div id="userContent" class="user-content" style="display: none;">
+        <div class="locations-section">
+            <h2>Starred Locations</h2>
+            <div id="locationsList" class="locations-list">
+            </div>
+            <button id="showAddLocationBtn" class="btn btn-primary">Add New Location</button>
+        </div>
+    </div>
+</div>
+
+<div id="addLocationModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add Location</h2>
+            <span id="closeAddLocationModal" class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="add-location-form">
+                <div class="location-input-group">
+                    <input type="text" id="locationInput" class="location-input" placeholder="Enter city, state, or address...">
+                    <button id="searchLocationBtn" class="btn btn-primary">Search</button>
+                </div>
+                <small class="input-help">Try: "Los Angeles, CA" or "London, UK" or "90210"</small>
+            </div>
+            
+            <div id="locationPreview" class="location-preview" style="display: none;">
+            </div>
+            
+            <div id="locationConfirmText" style="margin: 15px 0; font-weight: 500; display: none;"></div>
+            
+            <div class="modal-actions" id="confirmActions" style="display: none;">
+                <button id="confirmAddLocation" class="btn btn-primary">Add to Starred</button>
+                <button id="cancelAddLocation" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
