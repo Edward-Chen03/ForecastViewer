@@ -23,7 +23,6 @@ def home():
 
 @app.route('/auth/login', methods=['POST'])
 def auth_login():
-    """Simple email-based login - creates user if doesn't exist"""
     try:
         data = request.json
         email = data.get('email')
@@ -69,7 +68,6 @@ def auth_login():
 
 @app.route('/weather/nyc-forecast')
 def get_nyc_forecast():
-    """Get 7-day weather forecast for New York City with hourly data"""
     try:
         url = f"{WEATHER_URL}/forecast.json"
         params = {
@@ -155,7 +153,6 @@ def get_nyc_forecast():
 
 @app.route('/weather/current-location-hourly', methods=['POST'])
 def get_current_location_weather_hourly():
-    """Get current weather and hourly forecast for user's location using coordinates"""
     try:
         data = request.json
         lat = data.get('latitude')
@@ -251,7 +248,6 @@ def get_current_location_weather_hourly():
 
 @app.route('/add-location', methods=['POST'])
 def add_location():
-    """Add a new starred location for a user"""
     try:
         data = request.json
         email = data.get('email')
@@ -330,7 +326,6 @@ def add_location():
 
 @app.route('/remove-location', methods=['POST'])
 def remove_location():
-    """Remove a starred location for a user"""
     try:
         data = request.json
         email = data.get('email')
@@ -378,7 +373,6 @@ def remove_location():
 
 @app.route('/weather/location-forecast', methods=['POST'])
 def get_location_forecast():
-    """Get 7-day weather forecast for a specific location with hourly data"""
     try:
         data = request.json
         lat = data.get('latitude')
@@ -474,7 +468,6 @@ def get_location_forecast():
 
 @app.route('/get-locations/<email>')
 def get_user_locations(email):
-    """Get user's saved locations"""
     try:
         response = supabase.table('users').select("starred").eq('email', email).execute()
         
@@ -497,4 +490,5 @@ def get_user_locations(email):
         })
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
