@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Forecast Viewer{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='cloudico.png') }}">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/navigation.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/weatherDashboard.css') }}">

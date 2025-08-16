@@ -262,7 +262,7 @@ class WeatherDashboard {
             locationSelector.style.display = 'block';
             
             const starredLocations = window.locationManager ? window.locationManager.starredLocations : [];
-            locationSelect.innerHTML = '<option value="current_location">📍 Your Location</option>' +
+            locationSelect.innerHTML = '<option value="current_location"> Your Location</option>' +
                 starredLocations.map((location, index) => 
                     `<option value="location_${index}">${location.city}, ${location.region}</option>`
                 ).join('');
