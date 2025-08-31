@@ -1,20 +1,16 @@
 class AuthManager {
     constructor() {
         this.currentUser = null;
+        this.userId = null;
         this.init();
     }
 
     init() {
         this.setupEventListeners();
+        // Note: Removed localStorage usage - users will need to log in each session
         setTimeout(() => {
-            const savedEmail = localStorage.getItem('userEmail');
-            if (savedEmail) {
-                this.setCurrentUser(savedEmail);
-                this.loadUserDataOnRefresh();
-            } else {
-                if (window.weatherDashboard) {
-                    window.weatherDashboard.initializeForUser(false);
-                }
+            if (window.weatherDashboard) {
+                window.weatherDashboard.initializeForUser(false);
             }
         }, 50);
     }
@@ -76,7 +72,7 @@ class AuthManager {
     showLoginModal() {
         const loginModal = document.getElementById('loginModal');
         const loginEmail = document.getElementById('loginEmail');
-        
+
         if (loginModal) {
             loginModal.style.display = 'flex';
         }
@@ -88,7 +84,7 @@ class AuthManager {
     hideLoginModal() {
         const loginModal = document.getElementById('loginModal');
         const loginForm = document.getElementById('loginForm');
-        
+
         if (loginModal) {
             loginModal.style.display = 'none';
         }
@@ -100,9 +96,9 @@ class AuthManager {
     async handleLogin() {
         const emailInput = document.getElementById('loginEmail');
         if (!emailInput) return;
-        
+
         const email = emailInput.value.trim();
-        
+
         if (!email) {
             alert('Please enter a valid email address');
             return;
@@ -118,7 +114,7 @@ class AuthManager {
             console.log('Login response:', result);
 
             if (result.status === 'success') {
-                this.setCurrentUser(email);
+                this.setCurrentUser(email, result.user_id);
                 this.hideLoginModal();
                 await this.loadUserData();
                 console.log('Login successful:', result.message);
@@ -131,30 +127,35 @@ class AuthManager {
         }
     }
 
-    setCurrentUser(email) {
+    setCurrentUser(email, userId) {
         this.currentUser = email;
-        localStorage.setItem('userEmail', email);
+        this.userId = userId;
         this.updateUI();
-        console.log('User set:', email);
+        console.log('User set:', email, 'ID:', userId);
     }
 
     logout() {
         console.log('Logging out user:', this.currentUser);
         this.currentUser = null;
-        localStorage.removeItem('userEmail');
-        
+        this.userId = null;
+
+        // Reset weather history mode before resetting other components
+        if (window.weatherHistory && window.weatherHistory.isHistoryMode) {
+            window.weatherHistory.exitHistoryMode();
+        }
+
         if (window.weatherDashboard) {
             window.weatherDashboard.currentDashboardLocation = 'nyc';
             window.weatherDashboard.isInitialized = false;
             window.weatherDashboard.initializeForUser(false);
         }
-        
+
         if (window.locationManager) {
             window.locationManager.selectedLocationIndex = null;
-            window.locationManager.starredLocations = [];
+            window.locationManager.savedLocations = [];
             window.locationManager.displayLocations([]);
         }
-        
+
         this.updateUI();
         console.log('Logout complete');
     }
@@ -176,10 +177,10 @@ class AuthManager {
             if (guestContent) guestContent.style.display = 'none';
             if (userContent) userContent.style.display = 'block';
             if (nycWeatherDashboard) nycWeatherDashboard.style.display = 'block';
-            
+
             if (userEmailSpan) userEmailSpan.textContent = this.currentUser;
             if (welcomeMessage) welcomeMessage.textContent = `Welcome back, ${this.currentUser}!`;
-            
+
             if (window.weatherDashboard) {
                 window.weatherDashboard.updateLocationSelector();
             }
@@ -189,7 +190,7 @@ class AuthManager {
             if (guestContent) guestContent.style.display = 'block';
             if (userContent) userContent.style.display = 'none';
             if (nycWeatherDashboard) nycWeatherDashboard.style.display = 'block';
-            
+
             if (welcomeMessage) welcomeMessage.textContent = 'Get weather data and save your favorite locations!';
 
             if (window.weatherDashboard) {
@@ -198,29 +199,10 @@ class AuthManager {
         }
     }
 
-    async loadUserDataOnRefresh() {
-        if (!this.currentUser) return;
-
-        try {
-            if (window.locationManager) {
-                await window.locationManager.loadUserLocations();
-            }
-            if (window.weatherDashboard) {
-                window.weatherDashboard.initializeForUser(true);
-            }
-        } catch (error) {
-            console.error('Error loading user data on refresh:', error);
-            if (window.weatherDashboard) {
-                window.weatherDashboard.initializeForUser(true);
-            }
-        }
-    }
-
     async loadUserData() {
         if (!this.currentUser) return;
 
         try {
-
             if (window.locationManager) {
                 await window.locationManager.loadUserLocations();
             }
@@ -241,5 +223,9 @@ class AuthManager {
 
     getCurrentUser() {
         return this.currentUser;
+    }
+
+    getUserId() {
+        return this.userId;
     }
 }

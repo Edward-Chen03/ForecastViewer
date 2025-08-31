@@ -8,13 +8,23 @@
     <div class="nyc-weather-dashboard">
         <div class="dashboard-header">
             <h2 id="dashboardTitle">Weather Dashboard</h2>
-            <div class="dashboard-controls">
+            
+            <!-- Regular controls (for current weather) -->
+            <div id="regularControls" class="dashboard-controls">
                 <div class="location-selector" id="locationSelector" style="display: none;">
                     <select id="locationSelect" class="location-select">
                         <option value="nyc">New York City</option>
                     </select>
                 </div>
+                <button id="monthlyViewBtn" class="btn btn-secondary">Monthly History</button>
                 <button id="refreshWeatherBtn" class="btn btn-secondary">Refresh</button>
+            </div>
+            
+            <!-- History controls (hidden by default) -->
+            <div id="historyControls" class="dashboard-controls history-controls" style="display: none;">
+                <button id="prevMonthBtn" class="btn btn-secondary">← Previous</button>
+                <button id="nextMonthBtn" class="btn btn-secondary">Next →</button>
+                <button id="backToCurrentBtn" class="btn btn-primary">Back to Current</button>
             </div>
         </div>
         
@@ -30,17 +40,17 @@
     <div id="guestContent" class="guest-content">
         <div class="info-section">
             <h2>Get Started</h2>
-            <p>Login with your email/username to get weather for your current location and save favorite locations.</p>
+            <p>Login with your email to get weather for your current location and save your favorite locations.</p>
             <button id="getStartedBtn" class="btn btn-primary">Get Started</button>
         </div>
     </div>
 
     <div id="userContent" class="user-content" style="display: none;">
         <div class="locations-section">
-            <h2>Starred Locations</h2>
+            <h2>Saved Locations</h2>
             <div id="locationsList" class="locations-list">
             </div>
-            <button id="showAddLocationBtn" class="btn btn-primary">Add New Location</button>
+            <button id="showAddLocationBtn" class="btn btn-primary">Save New Location</button>
         </div>
     </div>
 </div>
@@ -48,26 +58,48 @@
 <div id="addLocationModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Add Location</h2>
-            <span id="closeAddLocationModal" class="close">&times;</span>
+            <h2>Add New Location</h2>
+            <span class="close" id="closeAddLocationModal">&times;</span>
         </div>
+        
         <div class="modal-body">
-            <div class="add-location-form">
-                <div class="location-input-group">
-                    <input type="text" id="locationInput" class="location-input" placeholder="Enter city, state, or address...">
+            <div class="input-group">
+                <label for="locationInput">Search for a location:</label>
+                <div class="search-input-container">
+                    <input 
+                        type="text" 
+                        id="locationInput" 
+                        placeholder="Enter city, state, or country..."
+                        autocomplete="off"
+                    >
                     <button id="searchLocationBtn" class="btn btn-primary">Search</button>
                 </div>
-                <small class="input-help">Try: "Los Angeles, CA" or "London, UK" or "90210"</small>
             </div>
             
             <div id="locationPreview" class="location-preview" style="display: none;">
             </div>
             
-            <div id="locationConfirmText" style="margin: 15px 0; font-weight: 500; display: none;"></div>
+            <div id="customNameSection" class="input-group" style="display: none;">
+                <label for="customNameInput">Custom name (optional):</label>
+                <input 
+                    type="text" 
+                    id="customNameInput" 
+                    placeholder="e.g., Home, Work, Mom's House..."
+                    autocomplete="off"
+                >
+                <small class="input-help">
+                    Leave blank to use the location's default name
+                </small>
+            </div>
             
-            <div class="modal-actions" id="confirmActions" style="display: none;">
-                <button id="confirmAddLocation" class="btn btn-primary">Add to Starred</button>
+            <div id="locationConfirmText" class="confirm-text" style="display: none;">
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <div id="confirmActions" class="modal-actions" style="display: none;">
                 <button id="cancelAddLocation" class="btn btn-secondary">Cancel</button>
+                <button id="confirmAddLocation" class="btn btn-primary">Save Location</button>
             </div>
         </div>
     </div>

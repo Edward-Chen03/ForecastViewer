@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-
     window.apiService = new APIService();
     window.weatherDisplay = new WeatherDisplay();
     window.locationManager = new LocationManager();
@@ -9,6 +8,9 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         console.log('Initializing AuthManager with components ready');
         window.authManager = new AuthManager();
+        
+        // Initialize weather history manager
+        window.weatherHistory = new WeatherHistory();
     }, 100);
 
     initializeLegacyForms();

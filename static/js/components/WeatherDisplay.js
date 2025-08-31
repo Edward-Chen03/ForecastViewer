@@ -1,5 +1,6 @@
 class WeatherDisplay {
     displayCurrentWeather(current, location, dashboard) {
+        console.log(current)
         const currentWeatherCard = document.getElementById('currentWeatherCard');
         const lastUpdated = new Date(location.localtime).toLocaleString();
         const selectedDay = dashboard.forecastData ? dashboard.forecastData[dashboard.selectedDayIndex] : null;
@@ -54,7 +55,7 @@ class WeatherDisplay {
                     </div>
                 </div>
                 <div class="current-icon">
-                    <img src="https:${displayData.icon}" alt="${displayData.condition}">
+                    <div class="weather-emoji" style="font-size: 3rem;">${displayData.icon}</div>
                     <div style="font-size: 0.8rem; margin-top: 5px; opacity: 0.8;">
                         ${isToday ? `Updated: ${lastUpdated}` : 'Click to view hourly'}
                     </div>
@@ -109,7 +110,7 @@ class WeatherDisplay {
                     <div class="forecast-day-name">${displayDay}</div>
                     <div class="forecast-date">${dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                     <div class="forecast-icon">
-                        <img src="https:${day.icon}" alt="${day.condition}">
+                        <div class="weather-emoji" style="font-size: 2rem;">${day.icon}</div>
                     </div>
                     <div class="forecast-temps">
                         <span class="forecast-high">${Math.round(day.max_temp_f)}°</span>
@@ -170,7 +171,7 @@ class WeatherDisplay {
                 <div class="hourly-item ${isCurrentHour ? 'current-hour' : ''}">
                     <div class="hourly-time">${isCurrentHour ? 'Now' : timeDisplay}</div>
                     <div class="hourly-icon">
-                        <img src="https:${hour.icon}" alt="${hour.condition}" />
+                        <div class="weather-emoji" style="font-size: 1.5rem;">${hour.icon}</div>
                     </div>
                     <div class="hourly-temp">${Math.round(hour.temp_f)}°</div>
                     <div class="hourly-condition">${hour.condition}</div>
@@ -201,7 +202,7 @@ class WeatherDisplay {
                     <div class="weather-temp-section">
                         <div class="large-temp">${Math.round(current.temp_f)}°F</div>
                         <div class="weather-condition">
-                            <img src="https:${current.icon}" alt="${current.condition}" style="width: 50px; height: 50px;">
+                            <div class="weather-emoji" style="font-size: 3rem;">${current.icon}</div>
                             <span>${current.condition}</span>
                         </div>
                     </div>
@@ -270,7 +271,7 @@ class WeatherDisplay {
                 <div class="hourly-item ${isCurrentHour ? 'current-hour' : ''}">
                     <div class="hourly-time">${isCurrentHour ? 'Now' : timeDisplay}</div>
                     <div class="hourly-icon">
-                        <img src="https:${hour.icon}" alt="${hour.condition}" />
+                        <div class="weather-emoji" style="font-size: 1.5rem;">${hour.icon}</div>
                     </div>
                     <div class="hourly-temp">${Math.round(hour.temp_f)}°</div>
                     <div class="hourly-condition">${hour.condition}</div>

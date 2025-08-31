@@ -1,6 +1,6 @@
 class LocationManager {
     constructor() {
-        this.starredLocations = [];
+        this.savedLocations = [];
         this.selectedLocationIndex = null;
         this.pendingLocation = null;
         this.init();
@@ -57,7 +57,7 @@ class LocationManager {
 
         if (confirmAdd) {
             confirmAdd.addEventListener('click', () => {
-                this.confirmAddLocation();
+                this.confirmSaveLocation();
             });
         }
 
@@ -73,12 +73,14 @@ class LocationManager {
     showAddLocationModal() {
         const modal = document.getElementById('addLocationModal');
         const locationInput = document.getElementById('locationInput');
+        const customNameInput = document.getElementById('customNameInput');
         const locationPreview = document.getElementById('locationPreview');
         const confirmText = document.getElementById('locationConfirmText');
         const confirmActions = document.getElementById('confirmActions');
-        
+
         if (modal) {
             if (locationInput) locationInput.value = '';
+            if (customNameInput) customNameInput.value = '';
             if (locationPreview) locationPreview.style.display = 'none';
             if (confirmText) confirmText.style.display = 'none';
             if (confirmActions) confirmActions.style.display = 'none';
@@ -90,28 +92,30 @@ class LocationManager {
     hideAddLocationModal() {
         const modal = document.getElementById('addLocationModal');
         const locationInput = document.getElementById('locationInput');
+        const customNameInput = document.getElementById('customNameInput');
         const locationPreview = document.getElementById('locationPreview');
         const confirmText = document.getElementById('locationConfirmText');
         const confirmActions = document.getElementById('confirmActions');
-        
+
         if (modal) {
             modal.style.display = 'none';
         }
 
         if (locationInput) locationInput.value = '';
+        if (customNameInput) customNameInput.value = '';
         if (locationPreview) locationPreview.style.display = 'none';
         if (confirmText) confirmText.style.display = 'none';
         if (confirmActions) confirmActions.style.display = 'none';
-        
+
         this.pendingLocation = null;
     }
 
     async searchLocation() {
         const locationInput = document.getElementById('locationInput');
         if (!locationInput) return;
-        
+
         const location = locationInput.value.trim();
-        
+
         if (!location) {
             this.showNotification('Please enter a location', 'error');
             return;
@@ -130,7 +134,7 @@ class LocationManager {
         }
 
         try {
-            const result = await window.apiService.addLocation(window.authManager.getCurrentUser(), location);
+            const result = await window.apiService.searchLocation(location);
 
             if (result.status === 'success') {
                 this.showLocationPreview(result.location);
@@ -152,156 +156,154 @@ class LocationManager {
         const preview = document.getElementById('locationPreview');
         const confirmText = document.getElementById('locationConfirmText');
         const confirmActions = document.getElementById('confirmActions');
+        const customNameSection = document.getElementById('customNameSection');
 
         if (!preview || !confirmText || !confirmActions) return;
 
         preview.innerHTML = `
-            <div class="location-preview-name">${locationData.location_name}</div>
+            <div class="location-preview-name">${locationData.name}</div>
             <div class="location-preview-details">
-                Coordinates: ${locationData.lat}, ${locationData.lon}<br>
-                This location will be added to your starred locations.
+                ${locationData.country}<br>
+                Coordinates: ${locationData.latitude}, ${locationData.longitude}<br>
+                This location will be saved to your locations.
             </div>
         `;
         preview.style.display = 'block';
 
-        confirmText.textContent = `Add "${locationData.location_name}" to your starred locations?`;
+        if (customNameSection) {
+            customNameSection.style.display = 'block';
+        }
+
+        confirmText.textContent = `Save "${locationData.name}" to your locations?`;
         confirmText.style.display = 'block';
         confirmActions.style.display = 'flex';
 
         this.pendingLocation = locationData;
     }
 
-    async confirmAddLocation() {
+    async confirmSaveLocation() {
         if (!this.pendingLocation) return;
-        const locationToAdd = {
-            location_name: this.pendingLocation.location_name,
-            city: this.pendingLocation.city,
-            region: this.pendingLocation.region,
-            lat: this.pendingLocation.lat,
-            lon: this.pendingLocation.lon
-        };
 
         const confirmBtn = document.getElementById('confirmAddLocation');
+        const customNameInput = document.getElementById('customNameInput');
+        const customName = customNameInput ? customNameInput.value.trim() : null;
+
         if (confirmBtn) {
-            confirmBtn.textContent = 'Adding...';
+            confirmBtn.textContent = 'Saving...';
             confirmBtn.disabled = true;
         }
 
         try {
-            await this.loadUserLocations();
-            const newLocationIndex = this.starredLocations.findIndex(loc => 
-                loc.city === locationToAdd.city && 
-                loc.region === locationToAdd.region &&
-                Math.abs(loc.lat - locationToAdd.lat) < 0.001 &&
-                Math.abs(loc.lon - locationToAdd.lon) < 0.001
+            console.log('Attempting to save location:', this.pendingLocation);
+
+            const result = await window.apiService.saveLocation(
+                window.authManager.getCurrentUser(),
+                this.pendingLocation,
+                customName
             );
-            
-            console.log('Looking for newly added location:', locationToAdd);
-            console.log('Found at index:', newLocationIndex);
-            console.log('All starred locations:', this.starredLocations);
-            
-            this.hideAddLocationModal();
-            
-            if (newLocationIndex !== -1 && window.weatherDashboard) {
-                setTimeout(() => {
-                    window.weatherDashboard.switchDashboard(`location_${newLocationIndex}`);
-                }, 100);
+
+            console.log('Save location API response:', result);
+
+            if (result && result.status === 'success') {
+                this.showNotification(result.message, 'success');
+                this.hideAddLocationModal();
+
+                // Store the pending location data for comparison
+                const savedLocationData = this.pendingLocation;
+                console.log('Stored location data for comparison:', savedLocationData);
+
+                // Reload user locations and wait for completion
+                await this.loadUserLocations();
+
+                // Wait a bit more to ensure the data is fully loaded
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Add safety check and filter out null/undefined locations
+                const validLocations = this.savedLocations.filter(loc => loc && loc.name && loc.latitude && loc.longitude);
+
+                // Find the newly added location and switch to it - with retry logic
+                let newLocationIndex = -1;
+                let attempts = 0;
+                const maxAttempts = 3;
+
+                while (newLocationIndex === -1 && attempts < maxAttempts) {
+                    newLocationIndex = validLocations.findIndex(loc => {
+                        // Additional null check
+                        if (!loc || !loc.latitude || !loc.longitude) {
+                            return false;
+                        }
+                        
+                        try {
+                            const latMatch = Math.abs(parseFloat(loc.latitude) - parseFloat(savedLocationData.latitude)) < 0.001;
+                            const lonMatch = Math.abs(parseFloat(loc.longitude) - parseFloat(savedLocationData.longitude)) < 0.001;
+
+                            console.log('Comparing location:', {
+                                dbLocation: loc,
+                                searchLocation: savedLocationData,
+                                latMatch,
+                                lonMatch
+                            });
+
+                            return latMatch && lonMatch;
+                        } catch (error) {
+                            console.error('Error comparing locations:', error, loc);
+                            return false;
+                        }
+                    });
+
+                    if (newLocationIndex === -1) {
+                        attempts++;
+                        console.log(`Location not found, attempt ${attempts}/${maxAttempts}`);
+                        
+                        if (attempts < maxAttempts) {
+                            // Reload locations and try again
+                            await this.loadUserLocations();
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                            // Update validLocations for next attempt
+                            validLocations.length = 0;
+                            validLocations.push(...this.savedLocations.filter(loc => loc && loc.name && loc.latitude && loc.longitude));
+                        }
+                    }
+                }
+
+                console.log('Found new location at index:', newLocationIndex);
+
+                // Find the actual index in the full savedLocations array
+                if (newLocationIndex !== -1 && window.weatherDashboard) {
+                    const actualLocation = validLocations[newLocationIndex];
+                    const actualIndex = this.savedLocations.findIndex(loc =>
+                        loc && loc.id === actualLocation.id
+                    );
+
+                    if (actualIndex !== -1) {
+                        setTimeout(() => {
+                            window.weatherDashboard.switchDashboard(`location_${actualIndex}`);
+                        }, 300);
+                    }
+                } else {
+                    console.warn('Could not find newly saved location in the list');
+                }
+            } else {
+                console.error('Save location failed:', result);
+                const errorMessage = result && result.message ? result.message : 'Unknown error occurred while saving location';
+                this.showNotification(errorMessage, 'error');
             }
-            
         } catch (error) {
-            console.error('Error confirming location:', error);
-            this.showNotification('Error adding location. Please try again.', 'error');
+            console.error('Error saving location (caught exception):', error);
+            let errorMessage = 'Error saving location. Please try again.';
+
+            // Try to extract a more specific error message
+            if (error.message) {
+                errorMessage = `Error: ${error.message}`;
+            }
+
+            this.showNotification(errorMessage, 'error');
         } finally {
             if (confirmBtn) {
-                confirmBtn.textContent = 'Add to Starred';
+                confirmBtn.textContent = 'Save Location';
                 confirmBtn.disabled = false;
             }
         }
-    }
-
-    showNotification(message, type = 'info') {
-        const existingNotification = document.querySelector('.custom-notification');
-        if (existingNotification) {
-            existingNotification.remove();
-        }
-
-        const notification = document.createElement('div');
-        notification.className = `custom-notification ${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <span class="notification-message">${message}</span>
-                <button class="notification-close">&times;</button>
-            </div>
-        `;
-
-        document.body.appendChild(notification);
-        setTimeout(() => notification.classList.add('show'), 10);
-        setTimeout(() => this.hideNotification(notification), 4000);
-
-        notification.querySelector('.notification-close').addEventListener('click', () => {
-            this.hideNotification(notification);
-        });
-    }
-
-    hideNotification(notification) {
-        notification.classList.add('hide');
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }
-
-    showConfirmation(message) {
-        return new Promise((resolve) => {
-            const existingConfirm = document.querySelector('.custom-confirmation');
-            if (existingConfirm) {
-                existingConfirm.remove();
-            }
-
-            const confirmation = document.createElement('div');
-            confirmation.className = 'custom-confirmation';
-            confirmation.innerHTML = `
-                <div class="confirmation-backdrop"></div>
-                <div class="confirmation-dialog">
-                    <div class="confirmation-content">
-                        <h3>Confirm Action</h3>
-                        <p>${message}</p>
-                        <div class="confirmation-actions">
-                            <button class="btn btn-primary confirm-yes">Yes</button>
-                            <button class="btn btn-secondary confirm-no">No</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(confirmation);
-            setTimeout(() => confirmation.classList.add('show'), 10);
-
-            confirmation.querySelector('.confirm-yes').addEventListener('click', () => {
-                this.hideConfirmation(confirmation);
-                resolve(true);
-            });
-
-            confirmation.querySelector('.confirm-no').addEventListener('click', () => {
-                this.hideConfirmation(confirmation);
-                resolve(false);
-            });
-
-            confirmation.querySelector('.confirmation-backdrop').addEventListener('click', () => {
-                this.hideConfirmation(confirmation);
-                resolve(false);
-            });
-        });
-    }
-
-    hideConfirmation(confirmation) {
-        confirmation.classList.add('hide');
-        setTimeout(() => {
-            if (confirmation.parentNode) {
-                confirmation.parentNode.removeChild(confirmation);
-            }
-        }, 300);
     }
 
     async removeLocation(locationIndex) {
@@ -309,23 +311,26 @@ class LocationManager {
             return;
         }
 
-        const location = this.starredLocations[locationIndex];
+        const location = this.savedLocations[locationIndex];
         if (!location) return;
 
-        if (!await this.showConfirmation(`Remove "${location.location_name}" from your starred locations?`)) {
+        if (!await this.showConfirmation(`Remove "${location.name}" from your saved locations?`)) {
             return;
         }
 
         try {
-            const result = await window.apiService.removeLocation(window.authManager.getCurrentUser(), locationIndex);
+            const result = await window.apiService.removeLocation(
+                window.authManager.getCurrentUser(),
+                location.id  // This is now the user_location_id
+            );
 
             if (result.status === 'success') {
                 if (this.selectedLocationIndex === locationIndex) {
                     window.weatherDashboard.switchDashboard('current_location');
                 }
-                
+
                 await this.loadUserLocations();
-                this.showNotification(`Removed ${location.location_name} from starred locations`, 'success');
+                this.showNotification(result.message, 'success');
             } else {
                 this.showNotification(result.message, 'error');
             }
@@ -337,7 +342,7 @@ class LocationManager {
 
     async loadUserLocations() {
         if (!window.authManager || !window.authManager.getCurrentUser()) {
-            this.starredLocations = [];
+            this.savedLocations = [];
             this.displayLocations([]);
             return;
         }
@@ -346,20 +351,20 @@ class LocationManager {
             const result = await window.apiService.getUserLocations(window.authManager.getCurrentUser());
 
             if (result.status === 'success') {
-                this.starredLocations = result.locations;
+                this.savedLocations = result.locations;
                 this.displayLocations(result.locations);
                 if (window.weatherDashboard) {
                     window.weatherDashboard.updateLocationSelector();
                 }
-                console.log('Loaded starred locations:', result.locations);
+                console.log('Loaded saved locations:', result.locations);
             } else {
                 console.error('Failed to load user locations:', result.message);
-                this.starredLocations = [];
+                this.savedLocations = [];
                 this.displayLocations([]);
             }
         } catch (error) {
             console.error('Error loading user locations:', error);
-            this.starredLocations = [];
+            this.savedLocations = [];
             this.displayLocations([]);
         }
     }
@@ -367,18 +372,18 @@ class LocationManager {
     displayLocations(locations) {
         const locationsList = document.getElementById('locationsList');
         if (!locationsList) return;
-        
+
         if (locations.length === 0) {
-            locationsList.innerHTML = '<p>No starred locations yet. Add your first location below!</p>';
+            locationsList.innerHTML = '<p>No saved locations yet. Add your first location below!</p>';
         } else {
             locationsList.innerHTML = locations.map((location, index) => `
                 <div class="location-item ${this.selectedLocationIndex === index ? 'selected' : ''}" data-location-index="${index}">
                     <div class="location-item-header">
-                        <div class="location-item-name">${location.location_name}</div>
+                        <div class="location-item-name">${location.name}</div>
                         <button class="location-item-remove" onclick="window.locationManager.removeLocation(${index})">Remove</button>
                     </div>
                     <div class="location-item-details">
-                        ${location.city}, ${location.region} ${location.country}
+                        Coordinates: ${location.latitude}, ${location.longitude}
                     </div>
                     <div class="location-item-added">
                         Added: ${new Date(location.created_at).toLocaleDateString()}
@@ -389,7 +394,7 @@ class LocationManager {
             document.querySelectorAll('.location-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     if (e.target.classList.contains('location-item-remove')) return;
-                    
+
                     const locationIndex = parseInt(item.dataset.locationIndex);
                     window.weatherDashboard.switchDashboard(`location_${locationIndex}`);
                 });
@@ -399,11 +404,11 @@ class LocationManager {
 
     updateLocationSelection(locationIndex) {
         this.selectedLocationIndex = locationIndex;
-        
+
         document.querySelectorAll('.location-item').forEach(item => {
             item.classList.remove('selected');
         });
-        
+
         if (locationIndex !== null) {
             const selectedItem = document.querySelector(`[data-location-index="${locationIndex}"]`);
             if (selectedItem) {
@@ -428,9 +433,7 @@ class LocationManager {
         `;
 
         document.body.appendChild(notification);
-
         setTimeout(() => notification.classList.add('show'), 10);
-
         setTimeout(() => this.hideNotification(notification), 4000);
 
         notification.querySelector('.notification-close').addEventListener('click', () => {

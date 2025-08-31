@@ -16,9 +16,9 @@ class WeatherDashboard {
 
     initializeForUser(isLoggedIn) {
         if (this.isInitialized) return;
-        
+
         this.isInitialized = true;
-        
+
         if (isLoggedIn) {
             this.updateDashboardTitle('Getting your location...');
             this.loadUserLocationOnLogin();
@@ -50,7 +50,7 @@ class WeatherDashboard {
         } else if (this.currentDashboardLocation === 'nyc') {
             this.loadNYCForecast();
         } else {
-            this.loadLocationForecast(this.currentDashboardLocation);
+            this.loadSavedLocationForecast(this.currentDashboardLocation);
         }
     }
 
@@ -70,10 +70,10 @@ class WeatherDashboard {
             }
         } else {
             const locationIndex = parseInt(locationValue.replace('location_', ''));
-            if (window.locationManager && window.locationManager.starredLocations[locationIndex]) {
-                const location = window.locationManager.starredLocations[locationIndex];
+            if (window.locationManager && window.locationManager.savedLocations[locationIndex]) {
+                const location = window.locationManager.savedLocations[locationIndex];
                 this.currentDashboardLocation = location;
-                this.loadLocationForecast(location);
+                this.loadSavedLocationForecast(location);
                 if (window.locationManager) {
                     window.locationManager.updateLocationSelection(locationIndex);
                 }
@@ -113,14 +113,16 @@ class WeatherDashboard {
             if (result.status === 'success') {
                 this.forecastData = result.data.forecast;
                 this.currentWeather = result.data.current;
+                // Use the enhanced location name from the backend
                 this.location = result.data.location;
                 this.selectedDayIndex = 0;
                 this.userLocationData = {
                     lat: latitude,
                     lon: longitude
                 };
-                
-                this.updateDashboardTitle(`${result.data.location.name}, ${result.data.location.region} - 7 Day Forecast`);
+
+                // Update dashboard title with the enhanced location name
+                this.updateDashboardTitle(`${result.data.location.name} - 7 Day Forecast`);
                 window.weatherDisplay.displayCurrentWeather(result.data.current, result.data.location, this);
                 window.weatherDisplay.displayForecast(result.data.forecast, this);
             } else {
@@ -129,7 +131,7 @@ class WeatherDashboard {
 
         } catch (error) {
             let errorMessage = 'Failed to get your location. ';
-            
+
             if (error.code === 1) {
                 errorMessage = 'Location access denied. Please allow location access and try again.';
             } else if (error.code === 2) {
@@ -141,11 +143,12 @@ class WeatherDashboard {
             } else {
                 errorMessage += 'Please try again.';
             }
-            
+
             console.error('Error loading current location weather:', error);
             window.weatherDisplay.displayError(errorMessage);
         }
     }
+
 
     getCurrentPosition() {
         return new Promise((resolve, reject) => {
@@ -158,25 +161,33 @@ class WeatherDashboard {
         });
     }
 
-    async loadLocationForecast(location) {
+    async loadSavedLocationForecast(location) {
         const currentWeatherCard = document.getElementById('currentWeatherCard');
         const forecastGrid = document.getElementById('forecastGrid');
 
         currentWeatherCard.innerHTML = '<div class="loading">Loading current weather...</div>';
         forecastGrid.innerHTML = '<div class="loading">Loading 7-day forecast...</div>';
 
-        this.updateDashboardTitle(`${location.city}, ${location.region} - 7 Day Forecast`);
+        // Use the saved location name directly
+        const displayName = location.name || `${location.latitude}, ${location.longitude}`;
+        this.updateDashboardTitle(`${displayName} - 7 Day Forecast`);
 
         try {
-            const result = await window.apiService.getLocationForecast(location.lat, location.lon);
+            const result = await window.apiService.getLocationForecast(location.latitude, location.longitude);
 
             if (result.status === 'success') {
                 this.forecastData = result.data.forecast;
                 this.currentWeather = result.data.current;
-                this.location = result.data.location;
+                // Use saved location name, ignore API location data
+                this.location = {
+                    name: displayName,
+                    region: '',
+                    country: '',
+                    localtime: result.data.location.localtime
+                };
                 this.selectedDayIndex = 0;
-                
-                window.weatherDisplay.displayCurrentWeather(result.data.current, result.data.location, this);
+
+                window.weatherDisplay.displayCurrentWeather(result.data.current, this.location, this);
                 window.weatherDisplay.displayForecast(result.data.forecast, this);
             } else {
                 window.weatherDisplay.displayError(result.message);
@@ -198,13 +209,13 @@ class WeatherDashboard {
 
         try {
             const result = await window.apiService.getNYCForecast();
-
+            console.log(result)
             if (result.status === 'success') {
                 this.forecastData = result.data.forecast;
                 this.currentWeather = result.data.current;
                 this.location = result.data.location;
                 this.selectedDayIndex = 0;
-                
+
                 window.weatherDisplay.displayCurrentWeather(result.data.current, result.data.location, this);
                 window.weatherDisplay.displayForecast(result.data.forecast, this);
             } else {
@@ -218,12 +229,12 @@ class WeatherDashboard {
 
     selectDay(dayIndex) {
         this.selectedDayIndex = dayIndex;
-        
+
         document.querySelectorAll('.forecast-day').forEach(card => {
             card.classList.remove('selected');
         });
         document.querySelector(`[data-day-index="${dayIndex}"]`).classList.add('selected');
-        
+
         const hourlyContainer = document.getElementById('currentHourlyForecast');
         if (hourlyContainer) {
             hourlyContainer.style.display = 'none';
@@ -232,7 +243,7 @@ class WeatherDashboard {
                 expandIcon.textContent = '▼';
             }
         }
-        
+
         if (this.forecastData && this.currentWeather && this.location) {
             window.weatherDisplay.displayCurrentWeather(this.currentWeather, this.location, this);
         }
@@ -241,7 +252,7 @@ class WeatherDashboard {
     toggleCurrentHourlyForecast() {
         const hourlyContainer = document.getElementById('currentHourlyForecast');
         const expandIcon = document.querySelector('.expand-icon');
-        
+
         if (hourlyContainer.style.display === 'none') {
             window.weatherDisplay.displayHourlyForecast('currentHourlyScroll', this.selectedDayIndex, this.forecastData);
             hourlyContainer.style.display = 'block';
@@ -255,18 +266,18 @@ class WeatherDashboard {
     updateLocationSelector() {
         const locationSelect = document.getElementById('locationSelect');
         const locationSelector = document.getElementById('locationSelector');
-        
+
         if (!locationSelect || !locationSelector) return;
 
         if (window.authManager && window.authManager.getCurrentUser()) {
             locationSelector.style.display = 'block';
-            
-            const starredLocations = window.locationManager ? window.locationManager.starredLocations : [];
-            locationSelect.innerHTML = '<option value="current_location"> Your Location</option>' +
-                starredLocations.map((location, index) => 
-                    `<option value="location_${index}">${location.city}, ${location.region}</option>`
+
+            const savedLocations = window.locationManager ? window.locationManager.savedLocations : [];
+            locationSelect.innerHTML = '<option value="current_location">📍 Your Location</option>' +
+                savedLocations.map((location, index) =>
+                    `<option value="location_${index}">${location.name}</option>`
                 ).join('');
-                
+
             if (this.currentDashboardLocation === 'current_location') {
                 locationSelect.value = 'current_location';
             } else if (window.locationManager && window.locationManager.selectedLocationIndex !== null) {

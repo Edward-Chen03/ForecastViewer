@@ -53,26 +53,51 @@ class APIService {
         }
     }
 
-    async addLocation(email, location) {
+    async searchLocation(locationQuery) {
         try {
-            const response = await fetch('/add-location', {
+            const response = await fetch('/search-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email: email,
-                    location: location
+                    location: locationQuery
                 })
             });
             return await response.json();
         } catch (error) {
-            console.error('Error adding location:', error);
+            console.error('Error searching location:', error);
             throw error;
         }
     }
 
-    async removeLocation(email, locationIndex) {
+    async saveLocation(email, locationData, customName = null) {
+        try {
+            const requestBody = {
+                email: email,
+                location: locationData
+            };
+            
+            // Add custom name if provided
+            if (customName && customName.trim()) {
+                requestBody.custom_name = customName.trim();
+            }
+
+            const response = await fetch('/save-location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Error saving location:', error);
+            throw error;
+        }
+    }
+
+    async removeLocation(email, userLocationId) {
         try {
             const response = await fetch('/remove-location', {
                 method: 'POST',
@@ -81,7 +106,7 @@ class APIService {
                 },
                 body: JSON.stringify({
                     email: email,
-                    location_index: locationIndex
+                    location_id: userLocationId  // This is now user_location_id
                 })
             });
             return await response.json();
@@ -118,6 +143,27 @@ class APIService {
             return await response.json();
         } catch (error) {
             console.error('Error during login:', error);
+            throw error;
+        }
+    }
+
+    async getWeatherHistory(email, userLocationId, year, month) {
+        try {
+            const response = await fetch('/weather/history', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    user_location_id: userLocationId,
+                    year: year,
+                    month: month
+                })
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching weather history:', error);
             throw error;
         }
     }
